@@ -1,0 +1,64 @@
+{% load static %}
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UV Index — Live</title>
+
+    <link rel="stylesheet" href="{% static 'dashboard/css/uv_display.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <main class="uv-container" aria-labelledby="uv-heading">
+      <h1 id="uv-heading">UV Index — Live</h1>
+
+      <section class="uv-card" role="region" aria-live="polite" aria-atomic="true">
+        <div class="uv-current">
+          <div class="uv-value" id="uv-value">—</div>
+          <div class="uv-meta">
+            <div id="uv-category" class="uv-category">—</div>
+            <div id="uv-timestamp" class="uv-timestamp">—</div>
+          </div>
+        </div>
+
+        <div class="uv-controls">
+          <button id="refresh-button" aria-label="Refresh UV data">Refresh</button>
+          <label for="auto-refresh" class="auto-refresh-label">
+            <input type="checkbox" id="auto-refresh" checked /> Auto refresh
+          </label>
+        </div>
+
+        <div class="uv-chart-wrapper" aria-hidden="false">
+          <canvas id="uv-chart" width="600" height="120" role="img" aria-label="Recent UV index chart"></canvas>
+        </div>
+
+        <div class="uv-legend" id="uv-legend">
+          <!-- Dynamic category legend filled by JS -->
+        </div>
+      </section>
+
+      <div class="uv-info">
+        <h2>What the UV index means</h2>
+        <ul>
+          <li><strong>0–2</strong> Low</li>
+          <li><strong>3–5</strong> Moderate</li>
+          <li><strong>6–7</strong> High</li>
+          <li><strong>8–10</strong> Very High</li>
+          <li><strong>11+</strong> Extreme</li>
+        </ul>
+        <p>Protective actions: sunscreen, hat, sunglasses, and limit direct sun exposure
+           when UV is high.</p>
+      </div>
+    </main>
+
+    <script>
+    const UV_API_CURRENT_URL = "{% url 'api_uv_current' %}";
+    const UV_API_HISTORY_URL = "{% url 'api_uv_history' %}";
+    </script>
+    <script src="{% static 'dashboard/js/uv_display.js' %}"></script>
+
+  </body>
+</html>
+
+
