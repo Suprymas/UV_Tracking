@@ -1,1 +1,4 @@
+asgiref==3.10.0
+Django==5.2.7
 smbus2==0.5.0
+sqlparse==0.5.3

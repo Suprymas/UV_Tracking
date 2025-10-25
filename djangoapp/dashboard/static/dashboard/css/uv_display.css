@@ -13,6 +13,39 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
   background: white;
 }
+
+.uv-test-card {
+  display: flex;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
+  background: white;
+}
+
+.uv-test-button {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.uv-test-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.countdown-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  color: #444;
+}
+
+
 .uv-current { display: flex; align-items: center; gap: 1rem; }
 .uv-value { font-size: 3.5rem; font-weight: 700; min-width: 5ch; text-align: center; }
 .uv-meta { display: flex; flex-direction: column; }

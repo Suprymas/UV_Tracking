@@ -16,6 +16,8 @@ const uvCategoryEl = document.getElementById('uv-category');
 const uvTimestampEl = document.getElementById('uv-timestamp');
 const refreshBtn = document.getElementById('refresh-button');
 const autoRefreshCheckbox = document.getElementById('auto-refresh');
+const measureButton = document.getElementById('uv-test-button');
+const countdownDisplay =  document.getElementById('countdown-display');
 let uvChart = null;
 
 function formatTimestamp(iso) {
@@ -97,3 +99,25 @@ autoRefreshCheckbox.addEventListener('change', () => {
   await fetchHistoryAndDraw();
   if (autoRefreshCheckbox.checked) startPolling();
 })();
+
+
+measureButton.addEventListener('click', async () => {
+  let timeLeft = 5;
+  measureButton.disabled = true;
+  countdownDisplay.textContent = `Measuring...${timeLeft}`
+
+  const interval = setInterval(() => {
+    timeLeft--;
+    if (timeLeft > 0) {
+      countdownDisplay.textContent = `Measuring...${timeLeft}`
+    }
+    else {
+      clearInterval(interval);
+      countdownDisplay.textContent = `Measurement complete!`;
+      setTimeout(() => {
+        countdownDisplay.textContent = '';
+        measureButton.disabled = false;
+      }, 3000)
+    }
+  }, 1000);
+})

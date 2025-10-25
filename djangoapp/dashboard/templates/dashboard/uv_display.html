@@ -4,21 +4,21 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UV Index — Live</title>
+    <title>UV Index - Live</title>
 
     <link rel="stylesheet" href="{% static 'dashboard/css/uv_display.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
     <main class="uv-container" aria-labelledby="uv-heading">
-      <h1 id="uv-heading">UV Index — Live</h1>
+      <h1 id="uv-heading">UV Index - Live</h1>
 
       <section class="uv-card" role="region" aria-live="polite" aria-atomic="true">
         <div class="uv-current">
-          <div class="uv-value" id="uv-value">—</div>
+          <div class="uv-value" id="uv-value">-</div>
           <div class="uv-meta">
-            <div id="uv-category" class="uv-category">—</div>
-            <div id="uv-timestamp" class="uv-timestamp">—</div>
+            <div id="uv-category" class="uv-category">-</div>
+            <div id="uv-timestamp" class="uv-timestamp">-</div>
           </div>
         </div>
 
@@ -32,9 +32,22 @@
         <div class="uv-chart-wrapper" aria-hidden="false">
           <canvas id="uv-chart" width="600" height="120" role="img" aria-label="Recent UV index chart"></canvas>
         </div>
+      </section>
 
-        <div class="uv-legend" id="uv-legend">
-          <!-- Dynamic category legend filled by JS -->
+      <section class="uv-test-card" role="region" aria-live="polite" aria-atomic="true">
+        <div class="uv-test">
+          <h3 class="uv-test-text">
+            Measure your skin color for SPF recommendation
+          </h3>
+          <p>
+            Place the bottom of your forehand on the sensor and press the button to measure.
+          </p>
+
+          <button class="uv-test-button" id="uv-test-button">
+            Click to measure
+          </button>
+
+          <p id="countdown-display" class="countdown-text"></p>
         </div>
       </section>
 
