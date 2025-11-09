@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -122,3 +123,26 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+#Celery variables
+load_dotenv()
+UV_API_KEY = os.environ.get('UV_API_KEY')
+UV_LAT = 47.41 #Dornbirn
+UV_LNG = 9.74
+
+CELERY_BROKER_URL = os.environ.get('REDIS_URL')
+CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Europe/Vienna'
+
+# Celery Beat schedule
+CELERY_BEAT_SCHEDULE = {
+    'fetch-uv-data-every-30-minutes': {
+        'task': 'dashboard.tasks.fetch_uv_data',
+        'schedule': 1800.0,  # 30 minutes in seconds
+    },
+}

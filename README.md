@@ -4,6 +4,6 @@
 
 ---
 - Initialise python virtual environment
-- ```cd ./uvsite/ ```
+- ```cd ./djangoapp/ ```
 - ```python manage.py runserver```
 - Open http://127.0.0.1:8000/

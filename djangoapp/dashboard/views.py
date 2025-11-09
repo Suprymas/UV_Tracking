@@ -3,6 +3,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
+from .models import UVData
 
 def index(request):
     return HttpResponse("This is dashboard")
@@ -13,21 +14,27 @@ def uv_page(request):
 
 @require_GET
 def api_uv_current(request):
-    latest = {
-        "uv": 6.7,
-        "timestamp": timezone.now().isoformat()
-    }
-    return JsonResponse(latest)
+
+    latest = UVData.objects.first()
+
+    if latest:
+        return JsonResponse({
+            'uv': latest.uv_value,
+            'timestamp': latest.timestamp.isoformat(),
+        })
+    else:
+        return JsonResponse({
+            'error': 'No UV data found',
+        })
+
 
 @require_GET
 def api_uv_history(request):
-    now = timezone.now()
-    history = []
-    for i in range(24, 0, -1):
-        t = now - timezone.timedelta(hours=i)
-        history.append({
-            "timestamp": t.isoformat(),
-            "uv": max(0, (i % 12) + (i % 3) * 0.2)
-        })
-    return JsonResponse(history, safe=False)
+    readings = UVData.objects.all()[:48]
 
+    data = [{
+        'uv': reading.uv_value,
+        'timestamp': reading.timestamp.isoformat()
+    } for reading in readings]
+
+    return JsonResponse(data, safe=False)

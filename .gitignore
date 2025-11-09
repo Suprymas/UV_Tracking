@@ -1,4 +1,9 @@
-/myenv
-
+myenv
+.venv
+.idea
 __pycache__/
 djangoapp/staticfiles/
+*.sqlite3
+*.db
+.env
+celerybeat-schedule
