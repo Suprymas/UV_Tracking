@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Code Editor</title>
+    <link rel="stylesheet" href="{% static 'esp32connection/css/code_editor.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+</head>
+<body>
+    <div class="editor-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>ESP32 Code Editor</h2>
+                <button id="new-file-btn" class="btn btn-primary">New File</button>
+            </div>
+            <div class="file-list" id="file-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Main Editor Area -->
+        <div class="main-content">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" id="file-name" placeholder="File name" class="file-name-input">
+                    <select id="language-select" class="language-select">
+                        <option value="cpp">Arduino/C++</option>
+                        <option value="c">C</option>
+                        <option value="python">MicroPython</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button id="copy-btn" class="btn btn-primary">Copy Code</button>
+                    <button id="download-btn" class="btn btn-primary">Download</button>
+                    <button id="save-btn" class="btn btn-success">Save</button>
+                    <button id="delete-btn" class="btn btn-danger" style="display: none;">Delete</button>
+                </div>
+            </div>
+            <div id="editor" class="monaco-editor"></div>
+            <div class="status-bar">
+                <span id="status-text">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "{% url 'list_codes' %}".replace('/api/codes/', '');
+        const LIST_CODES_URL = "{% url 'list_codes' %}";
+        const SAVE_CODE_URL = "{% url 'save_code' %}";
+    </script>
+    <script src="{% static 'esp32connection/js/code_editor.js' %}"></script>
+</body>
+</html>
+
