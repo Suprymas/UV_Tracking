@@ -7,3 +7,4 @@ djangoapp/staticfiles/
 *.db
 .env
 celerybeat-schedule
+djangoapp/venv/
