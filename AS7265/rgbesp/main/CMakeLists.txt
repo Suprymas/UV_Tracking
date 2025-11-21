@@ -7,5 +7,6 @@ idf_component_register(
         esp_netif
         nvs_flash
         esp_websocket_client
+        driver
         json
 )
