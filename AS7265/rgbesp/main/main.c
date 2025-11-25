@@ -22,11 +22,11 @@
 #define WIFI_PASS      "12345678"
 
 // WebSocket Configuration
-#define WS_URI         "ws://10.31.204.51:8765"
+#define WS_URI         "ws://10.98.101.51:8765"
 
 // I2C Configuration (ESP32-C3 example pins)
-#define I2C_MASTER_SDA_IO     8  //I2C SDA pin number.
-#define I2C_MASTER_SCL_IO     9  //I2C SCL pin number.
+#define I2C_MASTER_SDA_IO     5  //I2C SDA pin number.
+#define I2C_MASTER_SCL_IO     6  //I2C SCL pin number.
 #define I2C_MASTER_NUM        I2C_NUM_0  //I2C port number.
 #define I2C_MASTER_FREQ_HZ    400000  //I2C clock frequency.
 #define I2C_MASTER_TX_BUF_DISABLE   0  //I2C transmit buffer disable.
