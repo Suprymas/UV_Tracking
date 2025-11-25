@@ -8,6 +8,70 @@
 
     <link rel="stylesheet" href="{% static 'dashboard/css/uv_display.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .analysis-result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            display: none; /* Hidden by default */
+            animation: fadeIn 0.5s;
+        }
+        .analysis-flex {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .skin-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .scientific-data {
+            font-size: 0.9em;
+            color: #666;
+            line-height: 1.4;
+        }
+        .rec-box {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .rec-highlight {
+            color: #d9534f;
+            font-weight: bold;
+        }
+        
+        /* Updated Demo Controls */
+        .dev-controls {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px dashed #ccc;
+            font-size: 0.8em;
+        }
+        .dev-btn-group {
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 5px; 
+            margin-top: 5px;
+        }
+        .dev-btn {
+            background: #eee;
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        .dev-btn:hover { background: #ddd; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
   </head>
   <body>
     <main class="uv-container" aria-labelledby="uv-heading">
@@ -40,14 +104,60 @@
             Measure your skin color for SPF recommendation
           </h3>
           <p>
-            Place the bottom of your forehand on the sensor and press the button to measure.
+            Place the bottom of your forehead on the sensor and press the button to measure.
           </p>
 
-          <button class="uv-test-button" id="uv-test-button">
+          <button class="uv-test-button" id="uv-test-button" onclick="startMeasurementSequence()">
             Click to measure
           </button>
-
+          
           <p id="countdown-display" class="countdown-text"></p>
+
+          <!-- UPDATED DEMO CONTROLS (6 Types) -->
+          <div class="dev-controls">
+             <span style="font-weight: bold; color: #555;">Simulate Skin Type (Demo):</span>
+             <div class="dev-btn-group">
+                 <!-- Type I: Very Light -->
+                 <button class="dev-btn" onclick="simulateSensor(255, 230, 220)">Type I</button>
+                 <!-- Type II: Light -->
+                 <button class="dev-btn" onclick="simulateSensor(240, 215, 195)">Type II</button>
+                 <!-- Type III: Medium -->
+                 <button class="dev-btn" onclick="simulateSensor(215, 180, 150)">Type III</button>
+                 <!-- Type IV: Tan -->
+                 <button class="dev-btn" onclick="simulateSensor(180, 140, 105)">Type IV</button>
+                 <!-- Type V: Brown -->
+                 <button class="dev-btn" onclick="simulateSensor(120, 85, 60)">Type V</button>
+                 <!-- Type VI: Dark -->
+                 <button class="dev-btn" onclick="simulateSensor(60, 45, 40)">Type VI</button>
+             </div>
+          </div>
+
+          <div id="skin-analysis-result" class="analysis-result">
+              <div class="analysis-flex">
+                  <div id="color-preview" class="skin-preview" style="background-color: #eee;"></div>
+                  
+                  <div>
+                      <h4 id="display-type" style="margin: 0; color: #007bff;">Analyzing...</h4>
+                      <!-- UPDATED ITA EXPLANATION -->
+                      <div class="scientific-data">
+                          ITA Score: <span id="display-ita">--</span>°
+                          <br>
+                          <small style="color: #888; font-style: italic;">
+                            *Scientific pigmentation score. Higher = Lighter, Lower = Darker.
+                          </small>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="rec-box">
+                   <ul style="padding-left: 20px; margin: 5px 0;">
+                       <li>SPF: <span id="rec-spf" class="rec-highlight">--</span></li>
+                       <li>Reapply: <span id="rec-time" class="rec-highlight">--</span></li>
+                       <li><i id="rec-tip" style="font-style: italic;">--</i></li>
+                   </ul>
+              </div>
+          </div>
+
         </div>
       </section>
 
@@ -71,7 +181,137 @@
     </script>
     <script src="{% static 'dashboard/js/uv_display.js' %}"></script>
 
+    <script>
+        // --- 1. SEQUENCE LOGIC ---
+        function startMeasurementSequence() {
+            const display = document.getElementById("countdown-display");
+            const resultBox = document.getElementById("skin-analysis-result");
+            
+            // Hide previous results
+            resultBox.style.display = "none";
+            
+            // simple countdown
+            display.innerText = "Scanning... 3";
+            setTimeout(() => display.innerText = "Scanning... 2", 1000);
+            setTimeout(() => display.innerText = "Scanning... 1", 2000);
+            setTimeout(() => {
+                display.innerText = "Scan Complete!";
+                // Default simulation if they click the big blue button
+                simulateSensor(200, 170, 140); 
+            }, 3000);
+        }
+
+        // --- 2. SENSOR PROCESSING LOGIC ---
+        function simulateSensor(r, g, b) {
+            // Get current UV Index from the dashboard display (parse it safely)
+            let uvText = document.getElementById("uv-value").innerText;
+            let currentUV = parseFloat(uvText);
+            if (isNaN(currentUV)) currentUV = 5; // Default to moderate if API hasn't loaded
+            
+            // Perform Scientific Analysis
+            const analysis = analyzeSkin(r, g, b, currentUV);
+
+            // Update UI
+            updateAnalysisUI(analysis);
+        }
+
+        function updateAnalysisUI(data) {
+            const resultBox = document.getElementById("skin-analysis-result");
+            
+            // 1. Set text
+            document.getElementById("display-type").innerText = data.classification.type + ": " + data.classification.description;
+            document.getElementById("display-ita").innerText = data.colorData.ita;
+            
+            document.getElementById("rec-spf").innerText = data.recommendations.spfFactor;
+            document.getElementById("rec-time").innerText = data.recommendations.reapplyFrequency;
+            document.getElementById("rec-tip").innerText = data.recommendations.healthTip;
+
+            // 2. Set Bubble Color
+            document.getElementById("color-preview").style.backgroundColor = `rgb(${data.colorData.r},${data.colorData.g},${data.colorData.b})`;
+
+            // 3. Reveal
+            resultBox.style.display = "block";
+            document.getElementById("countdown-display").innerText = "";
+        }
+
+        // --- 3. SCIENTIFIC ALGORITHMS (RGB -> LAB -> ITA) ---
+        function analyzeSkin(r, g, b, uvIndex) {
+            const lab = rgbToLab(r, g, b);
+            // ITA Formula: arctan((L* - 50) / b*) * (180 / PI)
+            const ita = (Math.atan2(lab.L - 50, lab.b) * (180 / Math.PI));
+
+            let type = "", desc = "";
+            // Fitzpatrick Classification based on ITA
+            if (ita > 55)      { type = "Type I";   desc = "Very Light"; }
+            else if (ita > 41) { type = "Type II";  desc = "Light"; }
+            else if (ita > 28) { type = "Type III"; desc = "Medium"; }
+            else if (ita > 10) { type = "Type IV";  desc = "Tan"; }
+            else if (ita > -30){ type = "Type V";   desc = "Brown"; }
+            else               { type = "Type VI";  desc = "Dark"; }
+
+            // --- UPDATED RECOMMENDATION LOGIC ---
+            // Lighter skin = More frequent reapplication
+            
+            let spf = "SPF 30";
+            let time = "Every 120 min"; // Default standard
+            let tip = "";
+            
+            if (type === "Type I" || type === "Type II") {
+                spf = "SPF 50+";
+                tip = "High burn risk. Wear hat & sunglasses.";
+                // CRITICAL: Very frequent reapplication for light skin
+                if (uvIndex >= 6) {
+                     time = "Every 30-60 min (High Risk!)";
+                } else {
+                     time = "Every 45-60 min";
+                }
+                
+            } else if (type === "Type III" || type === "Type IV") {
+                spf = "SPF 30-50";
+                tip = "Moderate burn risk. Seek shade at noon.";
+                // Moderate frequency for medium skin
+                if (uvIndex >= 8) {
+                    time = "Every 60-90 min";
+                } else {
+                    time = "Every 90-120 min";
+                }
+                
+            } else { // Type V & VI
+                spf = "SPF 15-30";
+                tip = "Low burn risk, but high aging risk. Moisturize.";
+                // Standard frequency for dark skin
+                time = "Every 120 min"; 
+            }
+
+            return {
+                colorData: { r, g, b, ita: ita.toFixed(2) },
+                classification: { type, description: desc },
+                recommendations: { spfFactor: spf, reapplyFrequency: time, healthTip: tip }
+            };
+        }
+
+        function rgbToLab(r, g, b) {
+            let r_n = r / 255, g_n = g / 255, b_n = b / 255;
+            
+            // RGB to XYZ
+            r_n = (r_n > 0.04045) ? Math.pow((r_n + 0.055) / 1.055, 2.4) : r_n / 12.92;
+            g_n = (g_n > 0.04045) ? Math.pow((g_n + 0.055) / 1.055, 2.4) : g_n / 12.92;
+            b_n = (b_n > 0.04045) ? Math.pow((b_n + 0.055) / 1.055, 2.4) : b_n / 12.92;
+
+            let X = (r_n * 0.4124 + g_n * 0.3576 + b_n * 0.1805) * 100;
+            let Y = (r_n * 0.2126 + g_n * 0.7152 + b_n * 0.0722) * 100;
+            let Z = (r_n * 0.0193 + g_n * 0.1192 + b_n * 0.9505) * 100;
+
+            // XYZ to Lab
+            const Rx = 95.047, Ry = 100.000, Rz = 108.883;
+            let x = X / Rx, y = Y / Ry, z = Z / Rz;
+            
+            x = (x > 0.008856) ? Math.pow(x, 1/3) : (7.787 * x) + (16/116);
+            y = (y > 0.008856) ? Math.pow(y, 1/3) : (7.787 * y) + (16/116);
+            z = (z > 0.008856) ? Math.pow(z, 1/3) : (7.787 * z) + (16/116);
+
+            return { L: (116 * y) - 16, a: 500 * (x - y), b: 200 * (y - z) };
+        }
+    </script>
   </body>
 </html>
-
-
