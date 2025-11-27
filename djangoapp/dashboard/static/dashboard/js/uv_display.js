@@ -9,7 +9,11 @@ const refreshBtn = document.getElementById('refresh-button');
 const autoRefreshCheckbox = document.getElementById('auto-refresh');
 const measureButton = document.getElementById('uv-test-button');
 const countdownDisplay = document.getElementById('countdown-display');
+const debugBtn = document.getElementById('debug-toggle-btn');
+let debugEnabled = false;
 let uvChart = null;
+// Websocket to measure the skin
+let ws = null;
 
 // --- UV Index ---
 function uvCategory(uv) {
@@ -88,12 +92,15 @@ autoRefreshCheckbox.addEventListener('change', ()=>{ autoRefreshCheckbox.checked
 measureButton.addEventListener('click', startMeasurementSequence);
 
 function startMeasurementSequence() {
+  measureButton.disabled = true;
   const display = countdownDisplay;
   const resultBox = document.getElementById("skin-analysis-result");
   resultBox.style.display = "none";
   display.innerText = "Scanning... 3";
   setTimeout(()=>display.innerText="Scanning... 2",1000);
   setTimeout(()=>display.innerText="Scanning... 1",2000);
+  ws.send(JSON.stringify({ type: "command", action: "read_sensor" }));
+  setTimeout(() => { measureButton.disabled = false; }, 5000);
   setTimeout(()=>{ display.innerText="Scan Complete!"; simulateSensor(200,170,140); },3000);
 }
 
@@ -163,8 +170,7 @@ function rgbToLab(r,g,b){
   return {L:(116*y)-16,a:500*(x-y),b:200*(y-z)};
 }
 
-// Websocket to measure the skin
-let ws = null;
+
 
 function initWebSocket() {
     ws = new WebSocket("ws://10.98.101.51:8765"); // Your ESP32 server
@@ -181,13 +187,21 @@ function initWebSocket() {
 }
 
 function handleIncomingData(data) {
-    if (data.type === "sensor") {
-        console.log("Sensor data received:", data.readings);
-        // Update your UI here (e.g., chart, skin analysis)
-        displaySensorData(data.readings);
-    } else if (data.type === "status") {
-        console.log("Status:", data.message);
-    }
+  if(data.type === "sensor" && debugEnabled) {
+    console.log(data);
+    const readings = data.readings.map((val, i) => `Ch${i+1}: ${val.toFixed(6)}`).join("\n");
+
+    // Update the debug log
+    const debugLog = document.getElementById("debug-log");
+    debugLog.textContent = `${readings}`;
+  }
+  if (data.type === "sensor" && !debugEnabled) {
+      console.log("Sensor data received:", data.readings);
+      // Update your UI here (e.g., chart, skin analysis)
+      displaySensorData(data.readings);
+  } else if (data.type === "status") {
+      console.log("Status:", data.message);
+  }
 }
 
 function displaySensorData(readings) {
@@ -212,38 +226,27 @@ function displaySensorData(readings) {
 
 
 
-const debugBtn = document.getElementById('debug-toggle-btn');
-let debugEnabled = false;
+
 
 debugBtn.addEventListener('click', () => {
   if (!debugEnabled) {
     // Enable debug mode
-    enableDebugMode("ws://10.98.101.51:8765"); // Replace with your WS URL
+    measureButton.disabled = true;
+    ws.send(JSON.stringify({ type: "command", action: "debug_on" }));
     debugBtn.innerText = "Disable Debug Mode";
     debugEnabled = true;
   } else {
     // Disable debug mode
-    disableDebugMode();
+    ws.send(JSON.stringify({ type: "command", action: "debug_off" }));
     debugBtn.innerText = "Enable Debug Mode";
     debugEnabled = false;
+    measureButton.disabled = false;
+    const debugLog = document.getElementById("debug-log");
+    debugLog.textContent = ``;
   }
 });
 
-document.getElementById("uv-test-button").addEventListener("click", () => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-        alert("WebSocket not connected yet!");
-        return;
-    }
 
-    // Disable button during measurement
-    const btn = document.getElementById("uv-test-button");
-    btn.disabled = true;
-
-    ws.send(JSON.stringify({ type: "command", action: "read_sensor" }));
-
-    // Re-enable button after some delay if desired
-    setTimeout(() => { btn.disabled = false; }, 5000);
-});
 
 window.addEventListener("load", () => {
     initWebSocket();

@@ -66,7 +66,6 @@ async def handle_client(websocket):
 
                 # Process different message types
                 if data.get("type") == "sensor":
-                    print(f"  Sensor data - {data['readings']}")
                     await broadcast_to_web_clients(data, sender=websocket)
 
 
