@@ -1,6 +1,6 @@
 #include "websocket.h"
 #include "wifi.h"
-
+#include "as7265x.h"
 #include "esp_log.h"
 #include "esp_websocket_client.h"
 #include "esp_timer.h"
@@ -8,10 +8,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define WS_URI "ws://10.31.204.51:8765"
+#define WS_URI "ws://10.98.101.51:8765"
 
 static const char *TAG = "WS";
 static esp_websocket_client_handle_t client = NULL;
+volatile bool debug_enabled = false;
+TaskHandle_t debug_task_handle = NULL;
+
 
 static void handle_incoming_message(const char *data, int len)
 {
@@ -30,8 +33,16 @@ static void handle_incoming_message(const char *data, int len)
                 if (cJSON_IsString(action)) {
                     ESP_LOGI(TAG, "Command: %s", action->valuestring);
 
-                    if (!strcmp(action->valuestring, "read_sensor")) {
+                    if (!strcmp(action->valuestring, "read_sensor") && !debug_enabled) {
                         send_sensor_data();
+                    }
+
+                    if (!strcmp(action->valuestring, "debug_on")) {
+                        debug_enabled = true;
+                    }
+
+                    if (!strcmp(action->valuestring, "debug_off")) {
+                        debug_enabled = false;
                     }
                 }
             }
@@ -66,10 +77,39 @@ void send_sensor_data(void)
 {
     if (!esp_websocket_client_is_connected(client)) return;
 
+    float sumCh[18] = {0};
+    //We are going to measure ten times to get the valid data
+    for (int i = 0; i < 10; i++) {
+        int idx = 0;
+
+        for (uint8_t dev = 0; dev < 3; dev++) {
+        as7265x_set_device(dev);
+            for (uint8_t base = 0x14; base < 0x2C; base += 4) {
+                float value;
+                if (as7265x_read_calibrated_value(base, &value) != ESP_OK) {
+                    ESP_LOGE("AS7265X", "Read failed dev=%d chan=%d", dev, idx % 6);
+                    value = 0.0f; // fallback
+                }
+                sumCh[idx++] += value; 
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    for (int i = 0; i < 18; i++) {
+        sumCh[i] /= 10.0f;
+    }
+    
+
     cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "type", "sensor");
-    cJSON_AddNumberToObject(root, "temperature", 20.0);
-    cJSON_AddNumberToObject(root, "timestamp", esp_timer_get_time() / 1000);
+
+    cJSON *arr = cJSON_CreateArray();
+    for (int i = 0; i < 18; i++) {
+        cJSON_AddItemToArray(arr, cJSON_CreateNumber(sumCh[i]));
+    }
+    cJSON_AddItemToObject(root, "readings", arr);
 
     char *json = cJSON_PrintUnformatted(root);
     if (json) {
@@ -83,10 +123,6 @@ static void sensor_task(void *pvParameters)
 {
     while (1) {
         xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
-
-        if (esp_websocket_client_is_connected(client)) {
-            send_sensor_data();
-        }
 
         vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
@@ -108,6 +144,52 @@ void send_status(const char *message)
     cJSON_Delete(root);
 }
 
+void debug_task(void *pvParameters)
+{
+    while (1)
+    {
+        if (debug_enabled && esp_websocket_client_is_connected(client))
+        {
+            float ch[18];
+            int idx = 0;
+
+            for (uint8_t dev = 0; dev < 3; dev++)
+            {
+                as7265x_set_device(dev);
+                for (uint8_t base = 0x14; base < 0x2C; base += 4)
+                {
+                    if (as7265x_read_calibrated_value(base, &ch[idx]) != ESP_OK)
+                    {
+                        ch[idx] = 0.0f; // fallback
+                    }
+                    idx++;
+                }
+            }
+
+            cJSON *root = cJSON_CreateObject();
+            cJSON_AddStringToObject(root, "type", "sensor");
+            cJSON_AddStringToObject(root, "mode", "debug");
+
+            cJSON *arr = cJSON_CreateArray();
+            for (int i = 0; i < 18; i++)
+            {
+                cJSON_AddItemToArray(arr, cJSON_CreateNumber(ch[i]));
+            }
+            cJSON_AddItemToObject(root, "readings", arr);
+
+            char *json = cJSON_PrintUnformatted(root);
+            if (json)
+            {
+                esp_websocket_client_send_text(client, json, strlen(json), portMAX_DELAY);
+                free(json);
+            }
+            cJSON_Delete(root);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 void websocket_start(void)
 {
     esp_websocket_client_config_t cfg = {
@@ -121,5 +203,11 @@ void websocket_start(void)
 
     esp_websocket_client_start(client);
 
+    if (debug_task_handle == NULL)
+    {
+        xTaskCreate(debug_task, "debug_task", 4096, NULL, 5, &debug_task_handle);
+    }
+
     xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, NULL);
+
 }
