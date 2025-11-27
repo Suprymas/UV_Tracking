@@ -8,3 +8,8 @@ djangoapp/staticfiles/
 .env
 celerybeat-schedule
 djangoapp/venv/
+.vscode/
+build/
+.devcontainer/
+sdkconfig.*
+.clangd

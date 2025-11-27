@@ -9,6 +9,31 @@ from datetime import datetime
 # Store connected clients
 connected_clients = set()
 
+async def send_command_to_all(action: str):
+    """
+    Broadcast a command to all connected clients.
+    action: string, e.g., "read_sensor", "debug_on", "debug_off"
+    """
+    if not connected_clients:
+        return
+
+    command = {
+        "type": "command",
+        "action": action,
+        "timestamp": datetime.now().isoformat()
+    }
+
+    disconnected = set()
+    for client in connected_clients:
+        try:
+            await client.send(json.dumps(command))
+            print(f"[{datetime.now()}] Sent {action} to {client.remote_address[0]}")
+        except:
+            disconnected.add(client)
+
+    # Remove disconnected clients
+    connected_clients.difference_update(disconnected)
+
 
 async def handle_client(websocket):
     connected_clients.add(websocket)
