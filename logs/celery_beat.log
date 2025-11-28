@@ -1,0 +1,13 @@
+/Users/mengmeng/Projects/UV_Tracking/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+[2025-11-28 14:26:54,638: INFO/MainProcess] beat: Starting...
+celery beat v5.5.3 (immunity) is starting.
+__    -    ... __   -        _
+LocalTime -> 2025-11-28 14:26:54
+Configuration ->
+    . broker -> amqp://guest:**@localhost:5672//
+    . loader -> celery.loaders.app.AppLoader
+    . scheduler -> celery.beat.PersistentScheduler
+    . db -> celerybeat-schedule
+    . logfile -> [stderr]@%INFO
+    . maxinterval -> 5.00 minutes (300s)

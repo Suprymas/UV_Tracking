@@ -14,10 +14,8 @@ env
 .env
 *.log
 .DS_Store
-AS7265/
-esp32_serial_monitor.py
-RPIRGB.py
-test_send.py
-MANUAL_UPLOAD_GUIDE.md
-.git
-.gitignore
+rgbesp/
+arduino/
+Connect.py
+WebSocket.py
+

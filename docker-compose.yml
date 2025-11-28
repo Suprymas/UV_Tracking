@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # Redis service for Celery
+  redis:
+    image: redis/redis-stack:latest
+    container_name: uv_tracking_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - uv_tracking_network
+
+  # Django application
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uv_tracking_django
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./djangoapp:/app
+      - django_static:/app/staticfiles
+    environment:
+      - DEBUG=True
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - ./djangoapp/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - uv_tracking_network
+    command: python manage.py runserver 0.0.0.0:8000
+
+  # Celery worker
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uv_tracking_celery_worker
+    volumes:
+      - ./djangoapp:/app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - ./djangoapp/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+      django:
+        condition: service_started
+    networks:
+      - uv_tracking_network
+    command: celery -A uvsite worker --loglevel=info
+
+  # Celery beat scheduler
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uv_tracking_celery_beat
+    volumes:
+      - ./djangoapp:/app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - ./djangoapp/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+      django:
+        condition: service_started
+    networks:
+      - uv_tracking_network
+    command: celery -A uvsite beat --loglevel=info
+
+  # WebSocket server
+  websocket:
+    build:
+      context: ./AS7265/websocket_server
+      dockerfile: Dockerfile
+    container_name: uv_tracking_websocket
+    ports:
+      - "8765:8765"
+    environment:
+      - WS_HOST=0.0.0.0
+      - WS_PORT=8765
+      - WS_LOG_LEVEL=INFO
+    networks:
+      - uv_tracking_network
+    restart: unless-stopped
+
+networks:
+  uv_tracking_network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  django_static:
+
