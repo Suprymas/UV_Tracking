@@ -173,7 +173,7 @@ function rgbToLab(r,g,b){
 
 
 function initWebSocket() {
-    ws = new WebSocket("ws://10.98.101.51:8765"); // Your ESP32 server
+    ws = new WebSocket(WEBSOCKET_URL);
 
     ws.onopen = () => console.log("WebSocket connected");
     ws.onmessage = (event) => {

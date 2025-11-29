@@ -27,7 +27,7 @@ class WebSocketServer:
         self.server = None
         self._shutdown_event = asyncio.Event()
     
-    async def handle_client(self, websocket: websockets.WebSocketServerProtocol, path: str) -> None:
+    async def handle_client(self, websocket: websockets.WebSocketServerProtocol) -> None:
         """
         Handle a new client connection
         
@@ -58,7 +58,6 @@ class WebSocketServer:
             self.handle_client,
             config.HOST,
             config.PORT,
-            ping_interval=config.PING_INTERVAL if config.PING_INTERVAL > 0 else None
         )
         
         logger.info(f"WebSocket server started successfully on {config.server_url}")
@@ -97,6 +96,7 @@ async def main():
     def signal_handler(sig, frame):
         logger.info("Received shutdown signal")
         server.signal_shutdown()
+        sys.exit(0)
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
