@@ -46,7 +46,6 @@
           <button class="uv-test-button" id="uv-test-button">Click to measure</button>
           <p id="countdown-display" class="countdown-text"></p>
 
-          <!-- Demo Controls for Fitzpatrick -->
           <div class="dev-controls">
             <span style="font-weight: bold; color: #555;">Simulate Skin Type (Demo):</span>
             <div class="dev-btn-group">
@@ -64,29 +63,34 @@
               <div id="color-preview" class="skin-preview" style="background-color: #eee;"></div>
               <div>
                 <h4 id="display-type" style="margin: 0; color: #007bff;">Analyzing...</h4>
+                
                 <div class="scientific-data">
-                  ITA Score: <span id="display-ita">--</span>°
+                  ITA Score: <span id="display-ita">--</span>
                   <br>
-                  <small style="color: #888; font-style: italic;">
-                    *Scientific pigmentation score. Higher = Lighter, Lower = Darker.
+                  <small style="color: #666; font-style: normal; font-size: 0.85em;">
+                    <strong>Individual Typology Angle (ITA)</strong><br>
+                    A standard scientific measure of skin color.<br>
+                    <span style="color: #007bff;">▲ Higher Score</span> = Lighter Skin <br>
+                    <span style="color: #d63384;">▼ Lower Score</span> = Darker Skin
                   </small>
                 </div>
-              </div>
+                </div>
             </div>
 
             <div class="rec-box">
+              
+              <div id="extreme-alert" style="display:none; background-color: #ffcccc; color: #cc0000; padding: 10px; border: 2px solid red; border-radius: 5px; margin-bottom: 10px; font-weight: bold;">
+              </div>
               <ul style="padding-left: 20px; margin: 5px 0;">
                 <li>SPF: <span id="rec-spf" class="rec-highlight">--</span></li>
                 <li>Reapply: <span id="rec-time" class="rec-highlight">--</span></li>
                 <li><i id="rec-tip" style="font-style: italic;">--</i></li>
               </ul>
             </div>
-          </div>
 
         </div>
       </section>
 
-      <!-- Debug Section -->
       <section class="uv-debug-card" id="uv-debug-card" role="region" aria-live="polite" aria-atomic="true" >
         <h3>Debug Mode - Live Data</h3>
         <p>Incoming sensor/UV data will appear here in real-time:</p>
@@ -110,6 +114,8 @@
     <script>
       const UV_API_CURRENT_URL = "{% url 'api_uv_current' %}";
       const UV_API_HISTORY_URL = "{% url 'api_uv_history' %}";
+      // This allows the JS file to find the new Python function we wrote
+      const SPF_CALC_URL = "{% url 'calculate_spf' %}";
     </script>
     <script src="{% static 'dashboard/js/uv_display.js' %}"></script>
   </body>

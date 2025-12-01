@@ -1,5 +1,9 @@
+// constants from the HTML template
 const CURRENT_ENDPOINT = UV_API_CURRENT_URL;
 const HISTORY_ENDPOINT = UV_API_HISTORY_URL;
+// safe check: if we forgot to add the line in HTML, this won't crash
+const SPF_ENDPOINT = typeof SPF_CALC_URL !== 'undefined' ? SPF_CALC_URL : '/dashboard/calculate_spf/';
+
 const POLL_INTERVAL_MS = 60000;
 
 const uvValueEl = document.getElementById('uv-value');
@@ -12,10 +16,11 @@ const countdownDisplay = document.getElementById('countdown-display');
 const debugBtn = document.getElementById('debug-toggle-btn');
 let debugEnabled = false;
 let uvChart = null;
+
 // Websocket to measure the skin
 let ws = null;
 
-// --- UV Index ---
+// --- UV Index (Existing Logic) ---
 function uvCategory(uv) {
   if (uv == null || isNaN(uv)) return {label:'Unknown', level:'unknown'};
   if (uv <= 2) return {label:'Low', level:'low'};
@@ -88,91 +93,45 @@ autoRefreshCheckbox.addEventListener('change', ()=>{ autoRefreshCheckbox.checked
   if (autoRefreshCheckbox.checked) startPolling();
 })();
 
-// --- Skin Measurement ---
+// --- Skin Measurement Trigger ---
 measureButton.addEventListener('click', startMeasurementSequence);
 
 function startMeasurementSequence() {
   measureButton.disabled = true;
   const display = countdownDisplay;
   const resultBox = document.getElementById("skin-analysis-result");
+  
   resultBox.style.display = "none";
   display.innerText = "Scanning... 3";
+  
   setTimeout(()=>display.innerText="Scanning... 2",1000);
   setTimeout(()=>display.innerText="Scanning... 1",2000);
-  ws.send(JSON.stringify({ type: "command", action: "read_sensor" }));
-  setTimeout(() => { measureButton.disabled = false; }, 5000);
-  setTimeout(()=>{ display.innerText="Scan Complete!"; simulateSensor(200,170,140); },3000);
-}
-
-function simulateSensor(r,g,b) {
-  let uvText = uvValueEl.innerText;
-  let currentUV = parseFloat(uvText);
-  if(isNaN(currentUV)) currentUV = 5;
-  const analysis = analyzeSkin(r,g,b,currentUV);
-  updateAnalysisUI(analysis);
-}
-
-function updateAnalysisUI(data){
-  const resultBox = document.getElementById("skin-analysis-result");
-  document.getElementById("display-type").innerText = data.classification.type + ": " + data.classification.description;
-  document.getElementById("display-ita").innerText = data.colorData.ita;
-  document.getElementById("rec-spf").innerText = data.recommendations.spfFactor;
-  document.getElementById("rec-time").innerText = data.recommendations.reapplyFrequency;
-  document.getElementById("rec-tip").innerText = data.recommendations.healthTip;
-  document.getElementById("color-preview").style.backgroundColor = `rgb(${data.colorData.r},${data.colorData.g},${data.colorData.b})`;
-  resultBox.style.display = "block";
-  countdownDisplay.innerText = "";
-}
-
-// --- Fitzpatrick Scale via ITA ---
-function analyzeSkin(r,g,b,uvIndex){
-  const lab = rgbToLab(r,g,b);
-  const ita = Math.atan2(lab.L-50, lab.b)*(180/Math.PI);
-  let type="",desc="";
-  if (ita>55) type="Type I",desc="Very Light";
-  else if(ita>41) type="Type II",desc="Light";
-  else if(ita>28) type="Type III",desc="Medium";
-  else if(ita>10) type="Type IV",desc="Tan";
-  else if(ita>-30) type="Type V",desc="Brown";
-  else type="Type VI",desc="Dark";
-
-  let spf="SPF 30",time="Every 120 min",tip="";
-  if(type==="Type I"||type==="Type II"){
-    spf="SPF 50+";
-    tip="High burn risk. Wear hat & sunglasses.";
-    time=uvIndex>=6 ? "Every 30-60 min (High Risk!)" : "Every 45-60 min";
-  } else if(type==="Type III"||type==="Type IV"){
-    spf="SPF 30-50";
-    tip="Moderate burn risk. Seek shade at noon.";
-    time=uvIndex>=8 ? "Every 60-90 min" : "Every 90-120 min";
+  
+  // sending the command to the pi/esp32 to start reading
+  if(ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "command", action: "read_sensor" }));
   } else {
-    spf="SPF 15-30";
-    tip="Low burn risk, but high aging risk. Moisturize.";
-    time="Every 120 min";
+      display.innerText = "Error: Sensor disconnected";
+      measureButton.disabled = false;
   }
-
-  return { colorData:{r,g,b,ita:ita.toFixed(2)}, classification:{type,description:desc}, recommendations:{spfFactor:spf,reapplyFrequency:time,healthTip:tip}};
+  
+  // timeout reset if nothing happens
+  setTimeout(() => { 
+      if(measureButton.disabled) {
+          measureButton.disabled = false; 
+          display.innerText = "";
+      }
+  }, 8000);
 }
 
-function rgbToLab(r,g,b){
-  let r_n=r/255,g_n=g/255,b_n=b/255;
-  r_n=(r_n>0.04045)?Math.pow((r_n+0.055)/1.055,2.4):r_n/12.92;
-  g_n=(g_n>0.04045)?Math.pow((g_n+0.055)/1.055,2.4):g_n/12.92;
-  b_n=(b_n>0.04045)?Math.pow((b_n+0.055)/1.055,2.4):b_n/12.92;
-  let X=(r_n*0.4124+g_n*0.3576+b_n*0.1805)*100;
-  let Y=(r_n*0.2126+g_n*0.7152+b_n*0.0722)*100;
-  let Z=(r_n*0.0193+g_n*0.1192+b_n*0.9505)*100;
-  const Rx=95.047,Ry=100,Rz=108.883;
-  let x=X/Rx,y=Y/Ry,z=Z/Rz;
-  x=(x>0.008856)?Math.pow(x,1/3):(7.787*x)+(16/116);
-  y=(y>0.008856)?Math.pow(y,1/3):(7.787*y)+(16/116);
-  z=(z>0.008856)?Math.pow(z,1/3):(7.787*z)+(16/116);
-  return {L:(116*y)-16,a:500*(x-y),b:200*(y-z)};
-}
-
-
-
+// --- WebSocket Setup ---
 function initWebSocket() {
+    // relying on the WEBSOCKET_URL defined in the HTML file
+    if (typeof WEBSOCKET_URL === 'undefined') {
+        console.error("WEBSOCKET_URL not defined in HTML");
+        return;
+    }
+    
     ws = new WebSocket(WEBSOCKET_URL);
 
     ws.onopen = () => console.log("WebSocket connected");
@@ -187,68 +146,113 @@ function initWebSocket() {
 }
 
 function handleIncomingData(data) {
+  // handling debug mode text
   if(data.type === "sensor" && debugEnabled) {
-    console.log(data);
     const readings = data.readings.map((val, i) => `Ch${i+1}: ${val.toFixed(6)}`).join("\n");
-
-    // Update the debug log
-    const debugLog = document.getElementById("debug-log");
-    debugLog.textContent = `${readings}`;
+    document.getElementById("debug-log").textContent = `${readings}`;
   }
+
+  // handling actual sensor data flow
   if (data.type === "sensor" && !debugEnabled) {
-      console.log("Sensor data received:", data.readings);
-      // Update your UI here (e.g., chart, skin analysis)
-      displaySensorData(data.readings);
+      console.log("Sensor data received, sending to backend...", data.readings);
+      
+      // NEW LOGIC: We do not calculate locally anymore. 
+      // We send the data to Django to get the SPF recommendation.
+      sendReadingsToBackend(data.readings);
+      
   } else if (data.type === "status") {
       console.log("Status:", data.message);
   }
 }
 
-function displaySensorData(readings) {
-    // Example: just log first three channels
+// --- Server Communication (Task 3.2 Logic) ---
+
+function sendReadingsToBackend(readings) {
     const resultBox = document.getElementById("skin-analysis-result");
-    const colorPreview = document.getElementById("color-preview");
+    const display = document.getElementById("countdown-display");
+    const alertBox = document.getElementById("extreme-alert"); // Get the new box
+    
+    display.innerText = "Analyzing...";
 
-    // For demonstration, map first 3 channels to RGB
-    const r = readings[0] || 200;
-    const g = readings[1] || 170;
-    const b = readings[2] || 140;
+    fetch(SPF_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 'readings': readings })
+    })
+    .then(response => response.json())
+    .then(data => {
+        measureButton.disabled = false;
+        display.innerText = "Scan Complete!";
+        
+        if(data.status === 'success') {
+            document.getElementById("display-type").innerText = data.skin_type;
+            document.getElementById("display-ita").innerText = data.ita_score + "°"; 
+            document.getElementById("rec-spf").innerText = data.spf_recommendation;
+            document.getElementById("rec-time").innerText = data.reapply_time; 
+            document.getElementById("rec-tip").innerText = "Based on current UV: " + data.uv_index;
 
-    // Update UI
-    colorPreview.style.backgroundColor = `rgb(${r},${g},${b})`;
+            // --- EXTREME WARNING LOGIC ---
+            if (data.warning) {
+                // Show the red box
+                alertBox.style.display = "block";
+                alertBox.innerText = data.warning;
+            } else {
+                // Hide it if safe
+                alertBox.style.display = "none";
+            }
+            // -----------------------------
 
-    // Optionally run Fitzpatrick skin analysis logic
-    const analysis = analyzeSkin(r, g, b, parseFloat(document.getElementById("uv-value").innerText) || 5);
-    updateAnalysisUI(analysis);
-
-    resultBox.style.display = "block";
+            // Color preview logic
+            const r = readings[0] ? Math.min(readings[0]*20, 255) : 200;
+            const g = readings[1] ? Math.min(readings[1]*20, 255) : 170;
+            const b = readings[2] ? Math.min(readings[2]*20, 255) : 140;
+            document.getElementById("color-preview").style.backgroundColor = `rgb(${r},${g},${b})`;
+            
+            resultBox.style.display = "block";
+        } else {
+            display.innerText = "Error processing data";
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        measureButton.disabled = false;
+        display.innerText = "Server Error";
+    });
 }
 
 
-
-
+// --- Debug & Legacy Functions ---
 
 debugBtn.addEventListener('click', () => {
   if (!debugEnabled) {
-    // Enable debug mode
     measureButton.disabled = true;
-    ws.send(JSON.stringify({ type: "command", action: "debug_on" }));
+    if(ws) ws.send(JSON.stringify({ type: "command", action: "debug_on" }));
     debugBtn.innerText = "Disable Debug Mode";
     debugEnabled = true;
   } else {
-    // Disable debug mode
-    ws.send(JSON.stringify({ type: "command", action: "debug_off" }));
+    if(ws) ws.send(JSON.stringify({ type: "command", action: "debug_off" }));
     debugBtn.innerText = "Enable Debug Mode";
     debugEnabled = false;
     measureButton.disabled = false;
-    const debugLog = document.getElementById("debug-log");
-    debugLog.textContent = ``;
+    document.getElementById("debug-log").textContent = ``;
   }
 });
 
-
+// Keeping this for the manual "Simulate" buttons in the HTML
+// (The buttons that say Type I, Type II, etc)
+window.simulateSensor = function(r,g,b) {
+  // we just mock the readings structure and send it to the backend function
+  // so even the simulation tests the full server path
+  const mockReadings = Array(18).fill(0);
+  mockReadings[0] = r/20; // approximate reverse scaling
+  mockReadings[1] = g/20;
+  mockReadings[2] = b/20;
+  // fill the rest with average
+  for(let i=3; i<18; i++) mockReadings[i] = (r+g+b)/60; 
+  
+  sendReadingsToBackend(mockReadings);
+}
 
 window.addEventListener("load", () => {
     initWebSocket();
 });
-
