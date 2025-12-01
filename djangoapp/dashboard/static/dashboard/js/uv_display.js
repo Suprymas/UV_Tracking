@@ -1,7 +1,6 @@
 // constants from the HTML template
 const CURRENT_ENDPOINT = UV_API_CURRENT_URL;
 const HISTORY_ENDPOINT = UV_API_HISTORY_URL;
-// safe check: if we forgot to add the line in HTML, this won't crash
 const SPF_ENDPOINT = typeof SPF_CALC_URL !== 'undefined' ? SPF_CALC_URL : '/dashboard/calculate_spf/';
 
 const POLL_INTERVAL_MS = 60000;
@@ -16,16 +15,13 @@ const countdownDisplay = document.getElementById('countdown-display');
 const debugBtn = document.getElementById('debug-toggle-btn');
 let debugEnabled = false;
 let uvChart = null;
-
-// Websocket to measure the skin
 let ws = null;
 
-// --- UV Index (Existing Logic) ---
+// --- UV Index Categories ---
 function uvCategory(uv) {
   if (uv == null || isNaN(uv)) return {label:'Unknown', level:'unknown'};
   if (uv <= 2) return {label:'Low', level:'low'};
-  if (uv <= 5) return {label:'Moderate', level:'moderate'};
-  if (uv <= 7) return {label:'High', level:'high'};
+  if (uv <= 7) return {label:'Mod/High', level:'moderate'};
   if (uv <= 10) return {label:'Very High', level:'very-high'};
   return {label:'Extreme', level:'extreme'};
 }
@@ -51,30 +47,75 @@ async function fetchCurrent() {
   updateCurrent(json);
 }
 
+// --- FIXED GRADIENT CHART LOGIC ---
 async function fetchHistoryAndDraw() {
   const res = await fetch(HISTORY_ENDPOINT, {cache:'no-cache'});
   if (!res.ok) throw new Error('Network error');
   const json = await res.json();
-  const labels = json.map(item => new Date(item.timestamp).toLocaleTimeString());
+  
+  const labels = json.map(item => new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
   const data = json.map(item => item.uv);
+  
+  // 1. Get the Canvas Context
   const ctx = document.getElementById('uv-chart').getContext('2d');
+  
+  // 2. DETECT ACTUAL HEIGHT (The Fix)
+  // Instead of guessing 400px, we ask the canvas how tall it actually is.
+  const chartHeight = ctx.canvas.height || 200; 
+
+  // 3. Create Gradient mapped to the Y-Axis (0 to 14)
+  // Canvas: 0 is Top (UV 14), chartHeight is Bottom (UV 0)
+  let gradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
+
+  // Stop 0.0 (Top / UV 14): Extreme Red
+  gradient.addColorStop(0, 'rgba(255, 0, 0, 0.8)'); 
+  
+  // Stop ~0.2 (UV 11): Start of Extreme
+  gradient.addColorStop(0.2, 'rgba(255, 0, 0, 0.7)');
+
+  // Stop ~0.4 (UV 8): Start of Very High (Orange)
+  gradient.addColorStop(0.4, 'rgba(255, 140, 0, 0.7)');
+
+  // Stop ~0.6 (UV 5): Moderate (Purple/Lilac)
+  gradient.addColorStop(0.6, 'rgba(186, 85, 211, 0.7)');
+
+  // Stop 1.0 (Bottom / UV 0): Low (Blue)
+  gradient.addColorStop(1, 'rgba(0, 123, 255, 0.6)'); 
 
   if (uvChart) {
     uvChart.data.labels = labels;
     uvChart.data.datasets[0].data = data;
+    // Apply the new dynamic gradient
+    uvChart.data.datasets[0].backgroundColor = gradient;
     uvChart.update();
     return;
   }
 
   uvChart = new Chart(ctx, {
     type: 'line',
-    data: { labels, datasets: [{ label: 'UV index', data, fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
+    data: { 
+        labels, 
+        datasets: [{ 
+            label: 'UV Index', 
+            data, 
+            fill: true, 
+            tension: 0.4, 
+            pointRadius: 0, 
+            borderWidth: 2,
+            borderColor: '#888', // Grey line so the color pops
+            backgroundColor: gradient 
+        }] 
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: { x:{ ticks:{ autoSkip: true } }, y:{ beginAtZero:true, suggestedMax:12 } },
+      scales: { 
+          x:{ ticks:{ autoSkip: true, maxTicksLimit: 6 } }, 
+          // IMPORTANT: Lock the Y-Axis to 14 so the gradient stays consistent!
+          y:{ beginAtZero:true, min: 0, max: 14 } 
+      },
       plugins: { legend:{ display:false } },
-      elements:{ line:{ borderJoinStyle:'round' } }
+      interaction: { intersect: false, mode: 'index' },
     }
   });
 }
@@ -99,15 +140,13 @@ measureButton.addEventListener('click', startMeasurementSequence);
 function startMeasurementSequence() {
   measureButton.disabled = true;
   const display = countdownDisplay;
-  const resultBox = document.getElementById("skin-analysis-result");
   
-  resultBox.style.display = "none";
+  document.getElementById("skin-analysis-result").style.display = "none";
+  
   display.innerText = "Scanning... 3";
-  
   setTimeout(()=>display.innerText="Scanning... 2",1000);
   setTimeout(()=>display.innerText="Scanning... 1",2000);
   
-  // sending the command to the pi/esp32 to start reading
   if(ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "command", action: "read_sensor" }));
   } else {
@@ -115,7 +154,6 @@ function startMeasurementSequence() {
       measureButton.disabled = false;
   }
   
-  // timeout reset if nothing happens
   setTimeout(() => { 
       if(measureButton.disabled) {
           measureButton.disabled = false; 
@@ -126,51 +164,28 @@ function startMeasurementSequence() {
 
 // --- WebSocket Setup ---
 function initWebSocket() {
-    // relying on the WEBSOCKET_URL defined in the HTML file
-    if (typeof WEBSOCKET_URL === 'undefined') {
-        console.error("WEBSOCKET_URL not defined in HTML");
-        return;
-    }
-    
+    if (typeof WEBSOCKET_URL === 'undefined') return;
     ws = new WebSocket(WEBSOCKET_URL);
-
     ws.onopen = () => console.log("WebSocket connected");
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        handleIncomingData(data);
-    };
-    ws.onclose = () => {
-        console.log("WebSocket disconnected. Reconnecting in 3s...");
-        setTimeout(initWebSocket, 3000);
-    };
+    ws.onmessage = (event) => handleIncomingData(JSON.parse(event.data));
+    ws.onclose = () => setTimeout(initWebSocket, 3000);
 }
 
 function handleIncomingData(data) {
-  // handling debug mode text
   if(data.type === "sensor" && debugEnabled) {
-    const readings = data.readings.map((val, i) => `Ch${i+1}: ${val.toFixed(6)}`).join("\n");
-    document.getElementById("debug-log").textContent = `${readings}`;
+    const readings = data.readings.map((val, i) => `Ch${i+1}: ${val.toFixed(2)}`).join(", ");
+    document.getElementById("debug-log").textContent = readings;
   }
-
-  // handling actual sensor data flow
   if (data.type === "sensor" && !debugEnabled) {
-      console.log("Sensor data received, sending to backend...", data.readings);
-      
-      // NEW LOGIC: We do not calculate locally anymore. 
-      // We send the data to Django to get the SPF recommendation.
       sendReadingsToBackend(data.readings);
-      
-  } else if (data.type === "status") {
-      console.log("Status:", data.message);
   }
 }
-
-// --- Server Communication (Task 3.2 Logic) ---
 
 function sendReadingsToBackend(readings) {
     const resultBox = document.getElementById("skin-analysis-result");
     const display = document.getElementById("countdown-display");
-    const alertBox = document.getElementById("extreme-alert"); // Get the new box
+    const alertBox = document.getElementById("extreme-alert"); 
+    const alertText = document.getElementById("extreme-alert-text");
     
     display.innerText = "Analyzing...";
 
@@ -191,18 +206,16 @@ function sendReadingsToBackend(readings) {
             document.getElementById("rec-time").innerText = data.reapply_time; 
             document.getElementById("rec-tip").innerText = "Based on current UV: " + data.uv_index;
 
-            // --- EXTREME WARNING LOGIC ---
+            // Warning Logic
             if (data.warning) {
-                // Show the red box
-                alertBox.style.display = "block";
-                alertBox.innerText = data.warning;
+                alertBox.style.display = "flex"; 
+                if(alertText) alertText.innerText = data.warning;
+                else alertBox.innerText = data.warning;
             } else {
-                // Hide it if safe
                 alertBox.style.display = "none";
             }
-            // -----------------------------
 
-            // Color preview logic
+            // Color Preview
             const r = readings[0] ? Math.min(readings[0]*20, 255) : 200;
             const g = readings[1] ? Math.min(readings[1]*20, 255) : 170;
             const b = readings[2] ? Math.min(readings[2]*20, 255) : 140;
@@ -210,7 +223,7 @@ function sendReadingsToBackend(readings) {
             
             resultBox.style.display = "block";
         } else {
-            display.innerText = "Error processing data";
+            display.innerText = "Error: " + (data.message || "Unknown");
         }
     })
     .catch(error => {
@@ -220,39 +233,24 @@ function sendReadingsToBackend(readings) {
     });
 }
 
-
-// --- Debug & Legacy Functions ---
-
+// --- Debug & Simulators ---
 debugBtn.addEventListener('click', () => {
   if (!debugEnabled) {
-    measureButton.disabled = true;
     if(ws) ws.send(JSON.stringify({ type: "command", action: "debug_on" }));
-    debugBtn.innerText = "Disable Debug Mode";
+    debugBtn.innerText = "Disable Debug Stream";
     debugEnabled = true;
   } else {
     if(ws) ws.send(JSON.stringify({ type: "command", action: "debug_off" }));
-    debugBtn.innerText = "Enable Debug Mode";
+    debugBtn.innerText = "Enable Debug Stream";
     debugEnabled = false;
-    measureButton.disabled = false;
-    document.getElementById("debug-log").textContent = ``;
   }
 });
 
-// Keeping this for the manual "Simulate" buttons in the HTML
-// (The buttons that say Type I, Type II, etc)
 window.simulateSensor = function(r,g,b) {
-  // we just mock the readings structure and send it to the backend function
-  // so even the simulation tests the full server path
   const mockReadings = Array(18).fill(0);
-  mockReadings[0] = r/20; // approximate reverse scaling
-  mockReadings[1] = g/20;
-  mockReadings[2] = b/20;
-  // fill the rest with average
+  mockReadings[0] = r/20; mockReadings[1] = g/20; mockReadings[2] = b/20;
   for(let i=3; i<18; i++) mockReadings[i] = (r+g+b)/60; 
-  
   sendReadingsToBackend(mockReadings);
 }
 
-window.addEventListener("load", () => {
-    initWebSocket();
-});
+window.addEventListener("load", initWebSocket);

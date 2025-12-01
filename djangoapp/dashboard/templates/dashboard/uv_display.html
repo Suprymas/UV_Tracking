@@ -1,122 +1,147 @@
 {% load static %}
-
+<!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UV Index - Live</title>
-
+    <title>Smart UV & Skin Tracker</title>
+    
     <link rel="stylesheet" href="{% static 'dashboard/css/uv_display.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <script>
       const WEBSOCKET_URL = `ws://${window.location.hostname}:8765`;
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </head>
-  <body>
-    <main class="uv-container" aria-labelledby="uv-heading">
-      <h1 id="uv-heading">UV Index - Live</h1>
+</head>
+<body>
 
-      <section class="uv-card" role="region" aria-live="polite" aria-atomic="true">
-        <div class="uv-current">
-          <div class="uv-value" id="uv-value">-</div>
-          <div class="uv-meta">
-            <div id="uv-category" class="uv-category">-</div>
-            <div id="uv-timestamp" class="uv-timestamp">-</div>
-          </div>
-        </div>
+    <main class="uv-container">
+        <h1><i class="fa-solid fa-sun" style="color: orange;"></i> Smart UV Tracker</h1>
 
-        <div class="uv-controls">
-          <button id="refresh-button" aria-label="Refresh UV data">Refresh</button>
-          <label for="auto-refresh" class="auto-refresh-label">
-            <input type="checkbox" id="auto-refresh" checked /> Auto refresh
-          </label>
-          <button id="debug-toggle-btn" class="uv-debug-btn">Enable Debug Mode</button>
-        </div>
-
-        <div class="uv-chart-wrapper" aria-hidden="false">
-          <canvas id="uv-chart" width="600" height="120" role="img" aria-label="Recent UV index chart"></canvas>
-        </div>
-      </section>
-
-      <section class="uv-test-card" role="region" aria-live="polite" aria-atomic="true">
-        <div class="uv-test">
-          <h3 class="uv-test-text">Measure your skin color for SPF recommendation</h3>
-          <p>Place the bottom of your forehand on the sensor and press the button to measure.</p>
-
-          <button class="uv-test-button" id="uv-test-button">Click to measure</button>
-          <p id="countdown-display" class="countdown-text"></p>
-
-          <div class="dev-controls">
-            <span style="font-weight: bold; color: #555;">Simulate Skin Type (Demo):</span>
-            <div class="dev-btn-group">
-              <button class="dev-btn" onclick="simulateSensor(255, 230, 220)">Type I</button>
-              <button class="dev-btn" onclick="simulateSensor(240, 215, 195)">Type II</button>
-              <button class="dev-btn" onclick="simulateSensor(215, 180, 150)">Type III</button>
-              <button class="dev-btn" onclick="simulateSensor(180, 140, 105)">Type IV</button>
-              <button class="dev-btn" onclick="simulateSensor(120, 85, 60)">Type V</button>
-              <button class="dev-btn" onclick="simulateSensor(60, 45, 40)">Type VI</button>
-            </div>
-          </div>
-
-          <div id="skin-analysis-result" class="analysis-result">
-            <div class="analysis-flex">
-              <div id="color-preview" class="skin-preview" style="background-color: #eee;"></div>
-              <div>
-                <h4 id="display-type" style="margin: 0; color: #007bff;">Analyzing...</h4>
-                
-                <div class="scientific-data">
-                  ITA Score: <span id="display-ita">--</span>
-                  <br>
-                  <small style="color: #666; font-style: normal; font-size: 0.85em;">
-                    <strong>Individual Typology Angle (ITA)</strong><br>
-                    A standard scientific measure of skin color.<br>
-                    <span style="color: #007bff;">▲ Higher Score</span> = Lighter Skin <br>
-                    <span style="color: #d63384;">▼ Lower Score</span> = Darker Skin
-                  </small>
-                </div>
+        <section class="uv-card">
+            <div class="uv-current">
+                <div class="uv-value" id="uv-value">-</div>
+                <div class="uv-category" id="uv-category" data-level="unknown">-</div>
+                <div class="uv-meta">
+                    <i class="fa-regular fa-clock"></i> Updated: <span id="uv-timestamp">-</span>
                 </div>
             </div>
 
-            <div class="rec-box">
-              
-              <div id="extreme-alert" style="display:none; background-color: #ffcccc; color: #cc0000; padding: 10px; border: 2px solid red; border-radius: 5px; margin-bottom: 10px; font-weight: bold;">
-              </div>
-              <ul style="padding-left: 20px; margin: 5px 0;">
-                <li>SPF: <span id="rec-spf" class="rec-highlight">--</span></li>
-                <li>Reapply: <span id="rec-time" class="rec-highlight">--</span></li>
-                <li><i id="rec-tip" style="font-style: italic;">--</i></li>
-              </ul>
+            <div class="uv-controls">
+                <button id="refresh-button"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                <label for="auto-refresh" class="auto-refresh-label" style="display:flex; align-items:center; gap:5px;">
+                    <input type="checkbox" id="auto-refresh" checked /> Auto Update
+                </label>
             </div>
 
+            <div class="uv-chart-wrapper">
+                <canvas id="uv-chart" width="600" height="150"></canvas>
+            </div>
+        </section>
+
+        <section class="uv-test-card">
+            <div class="uv-test">
+                <h3><i class="fa-solid fa-fingerprint"></i> Skin Protection Scanner</h3>
+                <p>Place sensor on your forearm to get a personalized SPF plan.</p>
+
+                <button class="uv-test-button" id="uv-test-button">
+                    <i class="fa-solid fa-wifi"></i> Start Scan
+                </button>
+                <p id="countdown-display" class="countdown-text" style="font-weight:bold; margin-top:10px;"></p>
+
+                <div class="dev-controls">
+                    <span style="font-weight: bold; color: #555; font-size:0.85rem;">DEV MODE: Simulate Sensor Data</span>
+                    <div class="dev-btn-group">
+                        <button class="dev-btn" onclick="simulateSensor(255, 230, 220)">Type I</button>
+                        <button class="dev-btn" onclick="simulateSensor(240, 215, 195)">Type II</button>
+                        <button class="dev-btn" onclick="simulateSensor(215, 180, 150)">Type III</button>
+                        <button class="dev-btn" onclick="simulateSensor(180, 140, 105)">Type IV</button>
+                        <button class="dev-btn" onclick="simulateSensor(120, 85, 60)">Type V</button>
+                        <button class="dev-btn" onclick="simulateSensor(60, 45, 40)">Type VI</button>
+                    </div>
+                </div>
+
+                <div id="skin-analysis-result" class="analysis-result">
+                    <div class="analysis-flex">
+                        <div id="color-preview" class="skin-preview" style="background-color: #eee;"></div>
+                        <div>
+                            <h4 id="display-type" style="margin: 0; font-size:1.3rem; color: #007bff;">Analyzing...</h4>
+                            
+                            <div class="scientific-data">
+                                <strong>ITA Score:</strong> <span id="display-ita">--</span>
+                                <div style="margin-top:5px; padding:8px; background:white; border-radius:5px; border:1px solid #ddd;">
+                                    <small><i class="fa-solid fa-flask"></i> <strong>Science Fact:</strong> ITA (Individual Typology Angle) measures skin pigmentation.</small>
+                                    <br>
+                                    <small style="display:block; margin-top:3px;">
+                                        <span style="color:#007bff;">▲ Higher</span> = Lighter | 
+                                        <span style="color:#d63384;">▼ Lower</span> = Darker
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rec-box">
+                        <div id="extreme-alert" style="display:none;">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size:1.5rem;"></i>
+                            <span id="extreme-alert-text">Extreme Danger!</span>
+                        </div>
+
+                        <h4 style="margin-top:0;">Your Personalized Plan:</h4>
+                        <ul>
+                            <li><i class="fa-solid fa-shield-halved"></i> <strong>Use SPF:</strong> <span id="rec-spf" class="rec-highlight">--</span></li>
+                            <li><i class="fa-solid fa-clock-rotate-left"></i> <strong>Reapply:</strong> <span id="rec-time" class="rec-highlight">--</span></li>
+                            <li><i class="fa-solid fa-circle-info"></i> <span id="rec-tip" style="font-style: italic;">--</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="uv-info">
+            <h3><i class="fa-solid fa-book-medical"></i> Understanding UV & SPF</h3>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>What is UV Index?</h4>
+                    <ul style="font-size: 0.9rem;">
+                        <li><strong style="color:green">0-2 (Low):</strong> Safe. No protection needed.</li>
+                        <li><strong style="color:orange">3-7 (Mod/High):</strong> Protection required.</li>
+                        <li><strong style="color:red">8+ (Very High):</strong> Extra protection essential.</li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <h4>Why SPF Matters?</h4>
+                    <p style="font-size: 0.9rem;">SPF (Sun Protection Factor) measures how well sunscreen protects you from UVB rays.</p>
+                    <ul style="font-size: 0.9rem;">
+                        <li><strong>SPF 15:</strong> Blocks ~93% of UVB rays.</li>
+                        <li><strong>SPF 30:</strong> Blocks ~97% of UVB rays.</li>
+                        <li><strong>SPF 50:</strong> Blocks ~98% of UVB rays.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <div style="text-align: center; margin-top:20px;">
+            <button id="debug-toggle-btn" class="uv-debug-btn" style="font-size:0.8rem; padding:5px 10px;">Toggle Debug Logs</button>
+            <pre id="debug-log" class="debug-log" style="text-align:left; background:#333; color:#0f0; padding:10px; display:none; margin-top:10px;"></pre>
         </div>
-      </section>
 
-      <section class="uv-debug-card" id="uv-debug-card" role="region" aria-live="polite" aria-atomic="true" >
-        <h3>Debug Mode - Live Data</h3>
-        <p>Incoming sensor/UV data will appear here in real-time:</p>
-        <pre id="debug-log" class="debug-log"></pre>
-      </section>
-
-
-      <div class="uv-info">
-        <h2>What the UV index means</h2>
-        <ul>
-          <li><strong>0–2</strong> Low</li>
-          <li><strong>3–5</strong> Moderate</li>
-          <li><strong>6–7</strong> High</li>
-          <li><strong>8–10</strong> Very High</li>
-          <li><strong>11+</strong> Extreme</li>
-        </ul>
-        <p>Protective actions: sunscreen, hat, sunglasses, and limit direct sun exposure when UV is high.</p>
-      </div>
     </main>
 
     <script>
       const UV_API_CURRENT_URL = "{% url 'api_uv_current' %}";
       const UV_API_HISTORY_URL = "{% url 'api_uv_history' %}";
-      // This allows the JS file to find the new Python function we wrote
       const SPF_CALC_URL = "{% url 'calculate_spf' %}";
     </script>
     <script src="{% static 'dashboard/js/uv_display.js' %}"></script>
-  </body>
+    
+    <script>
+        document.getElementById('debug-toggle-btn').addEventListener('click', function() {
+            const log = document.getElementById('debug-log');
+            log.style.display = log.style.display === 'none' ? 'block' : 'none';
+        });
+    </script>
+</body>
 </html>

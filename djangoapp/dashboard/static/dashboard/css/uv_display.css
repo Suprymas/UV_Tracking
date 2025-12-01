@@ -1,95 +1,241 @@
+/* Google Fonts for a modern, clean look */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+:root {
+    --primary-color: #007bff;
+    --bg-color: #f4f6f9;
+    --card-bg: #ffffff;
+    --text-dark: #2c3e50;
+    --text-light: #6c757d;
+    --danger-color: #dc3545;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-dark);
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
 .uv-container {
-  max-width: 980px;
-  margin: 1.5rem auto;
-  padding: 1rem;
-  font-family: system-ui, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
-.uv-card, .uv-test-card {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
-  background: white;
+h1 {
+    text-align: center;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 30px;
+    font-size: 2.2rem;
 }
 
-.uv-test-card {
-  flex-direction: column;
+h2, h3 { color: var(--text-dark); }
+
+/* --- CARDS --- */
+section {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease;
 }
 
+section:hover { transform: translateY(-2px); }
+
+/* --- UV CURRENT DISPLAY --- */
+.uv-current {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.uv-value {
+    font-size: 5rem;
+    font-weight: 800;
+    /* This creates the cool orange-red gradient text */
+    background: linear-gradient(135deg, #ff9966, #ff5e62);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.1;
+}
+
+.uv-meta {
+    margin-top: 10px;
+    font-size: 1.1rem;
+    color: var(--text-light);
+}
+
+.uv-category {
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 20px;
+    background-color: #eee;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+/* Color coding for UV Index levels */
+.uv-category[data-level='low'] { background-color: #d4edda; color: #155724; }
+.uv-category[data-level='moderate'] { background-color: #fff3cd; color: #856404; }
+.uv-category[data-level='high'] { background-color: #ffeeba; color: #d39e00; }
+.uv-category[data-level='very-high'] { background-color: #f8d7da; color: #721c24; }
+.uv-category[data-level='extreme'] { background-color: #721c24; color: #fff; }
+
+/* --- CONTROLS --- */
+.uv-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+button:hover { background-color: #0056b3; }
+button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+.uv-debug-btn { background-color: var(--text-light); }
+.uv-debug-btn:hover { background-color: #5a6268; }
+
+/* --- TEST SECTION --- */
+.uv-test { text-align: center; }
 .uv-test-button {
-  padding: 0.6rem 1.2rem;
-  border: none;
-  border-radius: 8px;
-  background: #007bff;
-  color: white;
-  cursor: pointer;
-  font-size: 1rem;
+    font-size: 1.2rem;
+    padding: 15px 30px;
+    margin-top: 10px;
+    background: linear-gradient(90deg, #007bff, #00d2ff);
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
 }
 
-.uv-test-button:disabled { background: #ccc; cursor: not-allowed; }
-.countdown-text { font-size: 1.25rem; font-weight: 600; margin-top: 0.5rem; color: #444; }
+.dev-controls {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px dashed #ccc;
+}
+.dev-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+.dev-btn {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    background-color: #e2e6ea;
+    color: #333;
+}
+.dev-btn:hover { background-color: #dbe2e8; }
 
-.uv-current { display: flex; align-items: center; gap: 1rem; }
-.uv-value { font-size: 3.5rem; font-weight: 700; min-width: 5ch; text-align: center; }
-.uv-meta { display: flex; flex-direction: column; }
-.uv-category { font-size: 1.125rem; font-weight: 600; }
-.uv-timestamp { font-size: .9rem; color: #555; }
-.uv-controls { display: flex; gap: .5rem; align-items: center; }
-#refresh-button { padding: .4rem .7rem; border-radius: 8px; border: 1px solid #ddd; background: #f7f7f7; cursor: pointer; }
-.uv-chart-wrapper { width: 100%; overflow: hidden; }
-canvas { max-width: 100%; height: auto; }
-.uv-info { margin-top: 1rem; padding: .75rem; border-radius: 8px; background: #f8fafc; }
-
-.analysis-result { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0; display: none; animation: fadeIn 0.5s; }
-.analysis-flex { display: flex; align-items: center; gap: 15px; }
-.skin-preview { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-.scientific-data { font-size: 0.9em; color: #666; line-height: 1.4; }
-.rec-box { margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
-.rec-highlight { color: #d9534f; font-weight: bold; }
-
-.dev-controls { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc; font-size: 0.8em; }
-.dev-btn-group { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-.dev-btn { background: #eee; border: 1px solid #ccc; padding: 4px 8px; cursor: pointer; border-radius: 4px; font-size: 0.9em; transition: background 0.2s; }
-.dev-btn:hover { background: #ddd; }
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-@media (min-width: 720px) {
-  .uv-card { grid-template-columns: 1fr 320px; }
+/* --- ANALYSIS RESULT BOX --- */
+.analysis-result {
+    display: none; /* Hidden by default */
+    margin-top: 30px;
+    text-align: left;
+    background: #f0f8ff;
+    border-left: 5px solid var(--primary-color);
+    padding: 20px;
+    border-radius: 8px;
 }
 
-
-
-.uv-debug-card {
-  margin-top: 20px;
-  padding: 1rem;
-  border-radius: 12px;
-  background: #f0f0f0;
-  border: 1px solid #ccc;
-  font-family: monospace;
-  max-height: 200px;
-  overflow-y: auto;
+.analysis-flex {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-.debug-log {
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #333;
-  font-size: 0.85rem;
+.skin-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 4px solid white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    flex-shrink: 0;
 }
 
-.uv-debug-btn {
-  margin-left: 10px;
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  border: 1px solid #888;
-  background: #ffc107;
-  color: #000;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.2s;
+.scientific-data {
+    font-size: 0.9rem;
+    color: #555;
+    margin-top: 5px;
 }
-.uv-debug-btn:hover { background: #e0a800; }
+
+/* --- RECOMMENDATION BOX --- */
+.rec-box {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.rec-highlight {
+    font-weight: 700;
+    color: var(--danger-color);
+}
+
+ul { list-style: none; padding: 0; }
+li { margin-bottom: 8px; font-size: 1.05rem; }
+/* This targets the FontAwesome icons */
+li i { color: var(--primary-color); margin-right: 8px; }
+
+/* --- WARNING BOX (The "Scream" Feature) --- */
+#extreme-alert {
+    background-color: #ffe5e5;
+    color: #d8000c;
+    border: 1px solid #d8000c;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    /* Pulse animation to catch attention */
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+/* --- EDUCATION GRID --- */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.info-card {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+.info-card h4 { margin-top: 0; color: var(--primary-color); }
+
+/* --- RESPONSIVE MOBILE --- */
+@media (max-width: 600px) {
+    .uv-value { font-size: 3.5rem; }
+    .analysis-flex { flex-direction: column; text-align: center; }
+    .info-grid { grid-template-columns: 1fr; }
+}
