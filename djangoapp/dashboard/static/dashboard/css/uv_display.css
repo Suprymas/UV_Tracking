@@ -239,3 +239,27 @@ li i { color: var(--primary-color); margin-right: 8px; }
     .analysis-flex { flex-direction: column; text-align: center; }
     .info-grid { grid-template-columns: 1fr; }
 }
+
+
+/* --- DEBUG LOG (The Fix) --- */
+.debug-log {
+    background-color: #1e1e1e; 
+    color: #00ff00;            
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace; 
+    font-size: 0.85rem;
+    margin-top: 20px;
+    text-align: left;
+    border: 1px solid #333;
+    
+    /* FORCE TEXT WRAPPING */
+    white-space: pre-wrap !important;      /* Forces text to wrap */
+    word-wrap: break-word !important;      /* Breaks long words/numbers */
+    overflow-x: hidden !important;         /* Hides horizontal scrollbar */
+    
+    /* Height controls */
+    max-height: 200px;          
+    overflow-y: auto;           
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}

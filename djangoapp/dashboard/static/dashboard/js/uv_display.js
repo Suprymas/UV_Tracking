@@ -56,36 +56,19 @@ async function fetchHistoryAndDraw() {
   const labels = json.map(item => new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
   const data = json.map(item => item.uv);
   
-  // 1. Get the Canvas Context
   const ctx = document.getElementById('uv-chart').getContext('2d');
-  
-  // 2. DETECT ACTUAL HEIGHT (The Fix)
-  // Instead of guessing 400px, we ask the canvas how tall it actually is.
   const chartHeight = ctx.canvas.height || 200; 
 
-  // 3. Create Gradient mapped to the Y-Axis (0 to 14)
-  // Canvas: 0 is Top (UV 14), chartHeight is Bottom (UV 0)
   let gradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
-
-  // Stop 0.0 (Top / UV 14): Extreme Red
   gradient.addColorStop(0, 'rgba(255, 0, 0, 0.8)'); 
-  
-  // Stop ~0.2 (UV 11): Start of Extreme
   gradient.addColorStop(0.2, 'rgba(255, 0, 0, 0.7)');
-
-  // Stop ~0.4 (UV 8): Start of Very High (Orange)
   gradient.addColorStop(0.4, 'rgba(255, 140, 0, 0.7)');
-
-  // Stop ~0.6 (UV 5): Moderate (Purple/Lilac)
   gradient.addColorStop(0.6, 'rgba(186, 85, 211, 0.7)');
-
-  // Stop 1.0 (Bottom / UV 0): Low (Blue)
   gradient.addColorStop(1, 'rgba(0, 123, 255, 0.6)'); 
 
   if (uvChart) {
     uvChart.data.labels = labels;
     uvChart.data.datasets[0].data = data;
-    // Apply the new dynamic gradient
     uvChart.data.datasets[0].backgroundColor = gradient;
     uvChart.update();
     return;
@@ -102,7 +85,7 @@ async function fetchHistoryAndDraw() {
             tension: 0.4, 
             pointRadius: 0, 
             borderWidth: 2,
-            borderColor: '#888', // Grey line so the color pops
+            borderColor: '#888', 
             backgroundColor: gradient 
         }] 
     },
@@ -111,7 +94,6 @@ async function fetchHistoryAndDraw() {
       maintainAspectRatio: false,
       scales: { 
           x:{ ticks:{ autoSkip: true, maxTicksLimit: 6 } }, 
-          // IMPORTANT: Lock the Y-Axis to 14 so the gradient stays consistent!
           y:{ beginAtZero:true, min: 0, max: 14 } 
       },
       plugins: { legend:{ display:false } },
@@ -171,13 +153,16 @@ function initWebSocket() {
     ws.onclose = () => setTimeout(initWebSocket, 3000);
 }
 
+// --- UNIFIED DATA HANDLER (Fixed) ---
 function handleIncomingData(data) {
-  if(data.type === "sensor" && debugEnabled) {
-    const readings = data.readings.map((val, i) => `Ch${i+1}: ${val.toFixed(2)}`).join(", ");
-    document.getElementById("debug-log").textContent = readings;
-  }
-  if (data.type === "sensor" && !debugEnabled) {
+  if (data.type === "sensor") {
+      // PRO FIX: Always process data, even if debug is ON.
+      // The sendReadingsToBackend function now handles the logging too.
+      console.log("Sensor data received"); 
       sendReadingsToBackend(data.readings);
+      
+  } else if (data.type === "status") {
+      console.log("Status:", data.message);
   }
 }
 
@@ -187,6 +172,17 @@ function sendReadingsToBackend(readings) {
     const alertBox = document.getElementById("extreme-alert"); 
     const alertText = document.getElementById("extreme-alert-text");
     
+    // --- Update Debug Log ---
+    const logText = readings.map((val, i) => `Ch${i+1}: ${val.toFixed(2)}`).join(", ");
+    const debugLog = document.getElementById("debug-log");
+    
+    if(debugLog) {
+        // We use 'prepend' or set textContent to show the latest data
+        debugLog.textContent = "CAPTURED WAVELENGTHS (Processed):\n" + logText;
+        debugLog.style.color = "#0f0"; 
+    }
+    // ------------------------
+
     display.innerText = "Analyzing...";
 
     fetch(SPF_ENDPOINT, {
@@ -206,7 +202,6 @@ function sendReadingsToBackend(readings) {
             document.getElementById("rec-time").innerText = data.reapply_time; 
             document.getElementById("rec-tip").innerText = "Based on current UV: " + data.uv_index;
 
-            // Warning Logic
             if (data.warning) {
                 alertBox.style.display = "flex"; 
                 if(alertText) alertText.innerText = data.warning;
@@ -215,7 +210,6 @@ function sendReadingsToBackend(readings) {
                 alertBox.style.display = "none";
             }
 
-            // Color Preview
             const r = readings[0] ? Math.min(readings[0]*20, 255) : 200;
             const g = readings[1] ? Math.min(readings[1]*20, 255) : 170;
             const b = readings[2] ? Math.min(readings[2]*20, 255) : 140;
@@ -236,11 +230,16 @@ function sendReadingsToBackend(readings) {
 // --- Debug & Simulators ---
 debugBtn.addEventListener('click', () => {
   if (!debugEnabled) {
-    if(ws) ws.send(JSON.stringify({ type: "command", action: "debug_on" }));
+    // Only send the command if we are actually connected to a real sensor
+    if(ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "command", action: "debug_on" }));
+    }
     debugBtn.innerText = "Disable Debug Stream";
     debugEnabled = true;
   } else {
-    if(ws) ws.send(JSON.stringify({ type: "command", action: "debug_off" }));
+    if(ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "command", action: "debug_off" }));
+    }
     debugBtn.innerText = "Enable Debug Stream";
     debugEnabled = false;
   }
