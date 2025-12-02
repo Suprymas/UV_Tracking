@@ -33,11 +33,11 @@ function formatTimestamp(iso) {
 function updateCurrent(data) {
   const uv = (data && typeof data.uv === 'number') ? data.uv : null;
   const ts = (data && data.timestamp) ? data.timestamp : null;
-  uvValueEl.textContent = uv == null ? '—' : uv.toFixed(1);
+  uvValueEl.textContent = uv == null ? '-' : uv.toFixed(1);
   const cat = uvCategory(uv);
   uvCategoryEl.textContent = cat.label;
   uvCategoryEl.dataset.level = cat.level;
-  uvTimestampEl.textContent = ts ? formatTimestamp(ts) : '—';
+  uvTimestampEl.textContent = ts ? formatTimestamp(ts) : '-';
 }
 
 async function fetchCurrent() {
@@ -124,7 +124,6 @@ function startMeasurementSequence() {
   const display = countdownDisplay;
   
   document.getElementById("skin-analysis-result").style.display = "none";
-  
   display.innerText = "Scanning... 3";
   setTimeout(()=>display.innerText="Scanning... 2",1000);
   setTimeout(()=>display.innerText="Scanning... 1",2000);
@@ -135,19 +134,12 @@ function startMeasurementSequence() {
       display.innerText = "Error: Sensor disconnected";
       measureButton.disabled = false;
   }
-  
-  setTimeout(() => { 
-      if(measureButton.disabled) {
-          measureButton.disabled = false; 
-          display.innerText = "";
-      }
-  }, 8000);
 }
 
 // --- WebSocket Setup ---
 function initWebSocket() {
     if (typeof WEBSOCKET_URL === 'undefined') return;
-    ws = new WebSocket(WEBSOCKET_URL);
+    ws = new WebSocket('ws://10.98.101.52:8765');
     ws.onopen = () => console.log("WebSocket connected");
     ws.onmessage = (event) => handleIncomingData(JSON.parse(event.data));
     ws.onclose = () => setTimeout(initWebSocket, 3000);
@@ -155,9 +147,11 @@ function initWebSocket() {
 
 // --- UNIFIED DATA HANDLER (Fixed) ---
 function handleIncomingData(data) {
-  if (data.type === "sensor") {
-      // PRO FIX: Always process data, even if debug is ON.
-      // The sendReadingsToBackend function now handles the logging too.
+  if(data.type === "sensor" && debugEnabled) {
+    const readings = data.readings.map((val, i) => `Ch${i+1}: ${val.toFixed(2)}`).join("\n");
+    document.getElementById("debug-log").textContent = readings;
+  }
+  if (data.type === "sensor" && !debugEnabled) {
       console.log("Sensor data received"); 
       sendReadingsToBackend(data.readings);
       
@@ -171,19 +165,8 @@ function sendReadingsToBackend(readings) {
     const display = document.getElementById("countdown-display");
     const alertBox = document.getElementById("extreme-alert"); 
     const alertText = document.getElementById("extreme-alert-text");
-    
-    // --- Update Debug Log ---
-    const logText = readings.map((val, i) => `Ch${i+1}: ${val.toFixed(2)}`).join(", ");
-    const debugLog = document.getElementById("debug-log");
-    
-    if(debugLog) {
-        // We use 'prepend' or set textContent to show the latest data
-        debugLog.textContent = "CAPTURED WAVELENGTHS (Processed):\n" + logText;
-        debugLog.style.color = "#0f0"; 
-    }
-    // ------------------------
 
-    display.innerText = "Analyzing...";
+
 
     fetch(SPF_ENDPOINT, {
         method: 'POST',
@@ -209,14 +192,33 @@ function sendReadingsToBackend(readings) {
             } else {
                 alertBox.style.display = "none";
             }
+            console.log(readings)
 
-            const r = readings[0] ? Math.min(readings[0]*20, 255) : 200;
-            const g = readings[1] ? Math.min(readings[1]*20, 255) : 170;
-            const b = readings[2] ? Math.min(readings[2]*20, 255) : 140;
-            document.getElementById("color-preview").style.backgroundColor = `rgb(${r},${g},${b})`;
+            const red_uW   = readings[0];
+            const green_uW = readings[17];
+            const blue_uW  = readings[14];
+
+            // YOU must measure these once under a bright white calibration source
+            const MAX_R = 120;   // µW at 630 nm
+            const MAX_G = 150;   // µW at 532 nm
+            const MAX_B = 130;   // µW at 465 nm
+
+            function scaleToRGB(val, max) {
+              if (!val || val <= 0) return 0;
+              return Math.min(Math.round(255 * (val / max)), 255);
+            }
+
+            // Convert microwatts → RGB
+            const r = scaleToRGB(red_uW,   MAX_R);
+            const g = scaleToRGB(green_uW, MAX_G);
+            const b = scaleToRGB(blue_uW,  MAX_B);
+
+            document.getElementById("color-preview").style.backgroundColor =
+              `rgb(${r},${g},${b})`;
             
             resultBox.style.display = "block";
         } else {
+        
             display.innerText = "Error: " + (data.message || "Unknown");
         }
     })
@@ -236,12 +238,14 @@ debugBtn.addEventListener('click', () => {
     }
     debugBtn.innerText = "Disable Debug Stream";
     debugEnabled = true;
+    measureButton.disabled = true;
   } else {
     if(ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "command", action: "debug_off" }));
     }
     debugBtn.innerText = "Enable Debug Stream";
     debugEnabled = false;
+    measureButton.disabled = false;
   }
 });
 
